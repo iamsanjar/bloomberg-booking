@@ -81,3 +81,66 @@ label,[data-testid="stWidgetLabel"] p{font-family:'IBM Plex Mono',monospace !imp
 .stat{background:var(--panel);border:1px solid var(--line);border-top:2px solid var(--amber);border-radius:3px;padding:.7rem .9rem;}
 .stat .k{font-family:'IBM Plex Mono',monospace;font-size:.68rem;color:#8B94A3;letter-spacing:.1em;}
 .stat .v{font-family:'IBM Plex Mono',monospace;font-size:1.7rem;font-weight:600;color:var(--amber);}
+.stat .v.g{color:var(--green);} .stat .v.r{color:var(--red);}
+.gridwrap{overflow-x:auto;border:1px solid var(--line);border-radius:3px;background:var(--panel);}
+table.grid{border-collapse:collapse;width:100%;font-family:'IBM Plex Mono',monospace;font-size:.82rem;min-width:640px;}
+table.grid th{background:#000;color:var(--amber);padding:.5rem .4rem;font-weight:600;border-bottom:1px solid var(--amber);text-align:center;}
+table.grid th.tm{text-align:left;padding-left:.8rem;color:#fff;white-space:nowrap;}
+table.grid td{text-align:center;padding:.42rem .3rem;border-bottom:1px solid #171B22;border-left:1px solid #171B22;}
+table.grid td.f{color:var(--green);background:rgba(24,201,100,.07);}
+table.grid td.x{color:var(--red);background:rgba(240,68,58,.12);}
+table.grid td.p{color:#3A4250;}
+.legend{font-family:'IBM Plex Mono',monospace;font-size:.75rem;color:#8B94A3;margin:.5rem 0 0 0;}
+.legend .f{color:var(--green);} .legend .x{color:var(--red);}
+.stButton button[kind="primary"],.stDownloadButton button{background:var(--amber);border:0;color:#000;
+    font-family:'IBM Plex Mono',monospace;font-weight:700;letter-spacing:.06em;text-transform:uppercase;}
+.stButton button[kind="primary"] p,.stDownloadButton button p{color:#000 !important;font-weight:700;}
+.stButton button[kind="primary"]:hover{background:#ffa23f;}
+.foot{font-family:'IBM Plex Mono',monospace;font-size:.72rem;color:#566070;margin-top:2.5rem;border-top:1px solid var(--line);padding-top:.8rem;}
+</style>
+"""
+
+
+# ======================= DATABASE =======================
+@st.cache_resource
+def db():
+    return create_client(st.secrets["SUPABASE_URL"], st.secrets["SUPABASE_KEY"])
+
+
+def make_slots():
+    slots, t = [], datetime.combine(date.today(), time(OPEN_HOUR, 0))
+    end = datetime.combine(date.today(), time(CLOSE_HOUR, 0))
+    while t + timedelta(minutes=SLOT_MINUTES) <= end:
+        slots.append(t.time())
+        t += timedelta(minutes=SLOT_MINUTES)
+    return slots
+
+
+SLOTS = make_slots()
+
+
+def slot_label(t: time):
+    end = (datetime.combine(date.today(), t) + timedelta(minutes=SLOT_MINUTES)).time()
+    return f"{t:%H:%M}-{end:%H:%M}"
+
+
+def now():
+    return datetime.now(TZ)
+
+
+def is_blocked(d: date):
+    if d.weekday() >= 5:
+        return "The lab is closed on weekends."
+    r = db().table("blocked_days").select("reason").eq("day", str(d)).execute().data
+    if r:
+        return f"The lab is closed: {r[0].get('reason') or 'holiday'}."
+    return None
+
+
+def get_bookings(d: date):
+    rows = (
+        db().table("bookings").select("*")
+        .eq("booking_date", str(d)).eq("status", "active").execute().data
+    )
+    for r in rows:
+        r["slot_start"] = datetime.strptime(r["slot_start"][:5], "%H:%
