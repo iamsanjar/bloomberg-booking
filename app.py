@@ -130,7 +130,10 @@ def booking_page():
     )
 
     today = now().date()
-    d = st.date_input("1. Choose date", value=today, min_value=today,
+    first_open = today
+    while first_open.weekday() >= 5:
+        first_open += timedelta(days=1)
+    d = st.date_input("1. Choose date", value=first_open, min_value=today,
                       max_value=today + timedelta(days=MAX_DAYS_AHEAD))
     closed = is_blocked(d)
     if closed:
@@ -152,7 +155,7 @@ def booking_page():
             else:
                 col.append("✅ Free")
         grid[f"T{term}"] = col
-    st.dataframe(pd.DataFrame(grid, index=[slot_label(t) for t in SLOTS]), use_container_width=True)
+    st.dataframe(pd.DataFrame(grid, index=[slot_label(t) for t in SLOTS]), width="stretch")
 
     st.subheader("2. Choose terminal and time")
     term = st.selectbox("Terminal", range(1, NUM_TERMINALS + 1), format_func=lambda x: f"Terminal {x}")
@@ -216,7 +219,7 @@ def admin_page():
         else:
             df = df[["booking_date", "slot_start", "terminal", "student_id", "major", "email", "id"]]
             df["slot_start"] = df["slot_start"].str[:5]
-            st.dataframe(df.drop(columns="id"), use_container_width=True)
+            st.dataframe(df.drop(columns="id"), width="stretch")
             buf = BytesIO()
             df.drop(columns="id").to_excel(buf, index=False)
             st.download_button("Download Excel", buf.getvalue(), "bookings.xlsx")
@@ -233,7 +236,7 @@ def admin_page():
         d = st.date_input("Day", value=now().date(), key="admin_day")
         bk = {(b["terminal"], b["slot_start"]): b["student_id"] for b in get_bookings(d)}
         grid = {f"T{t}": [bk.get((t, s), "") for s in SLOTS] for t in range(1, NUM_TERMINALS + 1)}
-        st.dataframe(pd.DataFrame(grid, index=[slot_label(s) for s in SLOTS]), use_container_width=True)
+        st.dataframe(pd.DataFrame(grid, index=[slot_label(s) for s in SLOTS]), width="stretch")
 
     with tab3:
         c1, c2 = st.columns(2)
@@ -256,4 +259,7 @@ if "cancel" in params:
     cancel_page(params["cancel"])
 else:
     page = st.sidebar.radio("Menu", ["Book a terminal", "Admin"])
-    booking_page() if page == "Book a terminal" else admin_page()
+    if page == "Book a terminal":
+        booking_page()
+    else:
+        admin_page()
