@@ -217,7 +217,7 @@ def header():
     with c2:
         st.markdown(
             '<div class="brand">TERMINAL <em>BOOKING</em></div>'
-            '<div class="sub">Reserve your Bloomberg terminal in 3 steps</div>',
+            '<div class="sub">Reserve your Bloomberg terminal in 4 steps</div>',
             unsafe_allow_html=True,
         )
 
